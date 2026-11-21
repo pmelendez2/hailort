@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+root="$(git rev-parse --show-toplevel)"
+remote="${1:-}"
+if [[ "$remote" != fork ]]; then
+    echo "FAIL: push only to the public fork remote, not upstream" >&2
+    exit 1
+fi
+while read -r local_ref local_oid remote_ref remote_oid; do
+    case "$remote_ref" in
+        refs/heads/feature/*|refs/heads/fix/*)
+            ;;
+        refs/tags/*)
+            ;;
+        *)
+            echo "FAIL: push only feature/fix branches or tags" >&2
+            exit 1
+            ;;
+    esac
+done
+"$root/scripts/preflight-mps.sh" --committed
