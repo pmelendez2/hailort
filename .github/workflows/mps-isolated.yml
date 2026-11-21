@@ -4,9 +4,7 @@ on:
   pull_request:
   push:
     branches:
-      - 'feature/**'
       - 'main'
-      - 'master'
   workflow_dispatch:
 
 permissions:
@@ -27,6 +25,10 @@ jobs:
             jobs: 4
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
+    env:
+      CCACHE_DIR: ${{ runner.temp }}/mps-ccache
+      CCACHE_MAXSIZE: 2G
+      CCACHE_COMPRESS: 'true'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -35,15 +37,33 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24.x'
+      - name: Restore native compiler cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/mps-ccache
+          key: mps-ccache-${{ runner.os }}-${{ matrix.arch }}-v1-${{ github.sha }}
+          restore-keys: |
+            mps-ccache-${{ runner.os }}-${{ matrix.arch }}-v1-
+
       - name: Install validation prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install -y g++ make python3 python3-venv file
+          sudo apt-get install -y g++ make python3 python3-venv file ccache
           python3 -m venv "$RUNNER_TEMP/cmake-venv"
           "$RUNNER_TEMP/cmake-venv/bin/python" -m pip install cmake==4.2.3
           echo "$RUNNER_TEMP/cmake-venv/bin" >> "$GITHUB_PATH"
           go install github.com/zricethezav/gitleaks/v8@v8.24.3
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          echo "/usr/lib/ccache" >> "$GITHUB_PATH"
+      - name: Verify compiler cache
+        run: |
+          ccache --version
+          command -v gcc
+          command -v g++
+          test "$(command -v gcc)" = /usr/lib/ccache/gcc
+          test "$(command -v g++)" = /usr/lib/ccache/g++
+          ccache --zero-stats
+
       - name: Verify CMake version
         run: |
           cmake --version
@@ -75,6 +95,10 @@ jobs:
         env:
           MPS_BUILD_JOBS: ${{ matrix.jobs }}
         run: bash scripts/build-mps.sh
+      - name: Report compiler cache statistics
+        if: always()
+        run: ccache --show-stats
+
       - name: Verify native binary architecture
         run: |
           binary="build/mps-${{ matrix.arch }}/hailort/hailort_service/hailort_service"
