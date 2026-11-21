@@ -19,3 +19,24 @@ while read -r local_ref local_oid remote_ref remote_oid; do
     esac
 done
 "$root/scripts/preflight-mps.sh" --committed
+
+# Git supplies ref updates through stdin. Read confirmation from the
+# controlling terminal so it cannot be confused with those updates.
+if [[ ! -r /dev/tty || ! -w /dev/tty ]]; then
+    echo "FAIL: interactive PUBLISH confirmation required" >&2
+    exit 1
+fi
+
+printf '\nType PUBLISH to authorize this Git push: ' > /dev/tty
+
+if ! IFS= read -r confirmation < /dev/tty; then
+    echo "FAIL: confirmation could not be read" >&2
+    exit 1
+fi
+
+if [[ "$confirmation" != "PUBLISH" ]]; then
+    echo "FAIL: push cancelled; PUBLISH was not entered" >&2
+    exit 1
+fi
+
+echo "PASS: PUBLISH confirmation accepted"
