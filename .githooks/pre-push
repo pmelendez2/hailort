@@ -27,7 +27,7 @@ if [[ ! -r /dev/tty || ! -w /dev/tty ]]; then
     exit 1
 fi
 
-printf '\nType PUBLISH to authorize this Git push: ' > /dev/tty
+printf '\nPublication checks passed. Review commits before pushing.\n\nThis push may expose code and history publicly. Type PUBLISH: ' > /dev/tty
 
 if ! IFS= read -r confirmation < /dev/tty; then
     echo "FAIL: confirmation could not be read" >&2
@@ -35,7 +35,7 @@ if ! IFS= read -r confirmation < /dev/tty; then
 fi
 
 if [[ "$confirmation" != "PUBLISH" ]]; then
-    echo "FAIL: push cancelled; PUBLISH was not entered" >&2
+    echo "Push cancelled." >&2
     exit 1
 fi
 
