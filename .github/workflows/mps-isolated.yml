@@ -26,7 +26,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     env:
-      CCACHE_DIR: ${{ runner.temp }}/mps-ccache
+      CCACHE_DIR: ${{ github.workspace }}/.mps-ccache
       CCACHE_MAXSIZE: 2G
       CCACHE_COMPRESS: 'true'
     steps:
@@ -40,7 +40,7 @@ jobs:
       - name: Restore native compiler cache
         uses: actions/cache@v4
         with:
-          path: ${{ runner.temp }}/mps-ccache
+          path: ${{ github.workspace }}/.mps-ccache
           key: mps-ccache-${{ runner.os }}-${{ matrix.arch }}-v1-${{ github.sha }}
           restore-keys: |
             mps-ccache-${{ runner.os }}-${{ matrix.arch }}-v1-
