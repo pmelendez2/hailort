@@ -1,0 +1,91 @@
+name: MPS isolated
+
+on:
+  pull_request:
+  push:
+    branches:
+      - 'feature/**'
+      - 'main'
+      - 'master'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated:
+    name: isolated (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+            jobs: 8
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            jobs: 4
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Install validation prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ make python3 python3-venv file
+          python3 -m venv "$RUNNER_TEMP/cmake-venv"
+          "$RUNNER_TEMP/cmake-venv/bin/python" -m pip install cmake==4.2.3
+          echo "$RUNNER_TEMP/cmake-venv/bin" >> "$GITHUB_PATH"
+          go install github.com/zricethezav/gitleaks/v8@v8.24.3
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Verify CMake version
+        run: |
+          cmake --version
+          cmake --version | head -n 1 | grep -Fx 'cmake version 4.2.3'
+      - name: Verify feature base and scan only feature commits
+        run: bash scripts/preflight-mps.sh --worktree
+      - name: Verify release metadata
+        run: |
+          python3 scripts/sync-release-docs.py --check
+          python3 -m unittest discover \
+            -s tests -p 'test_sync_release_docs.py' -v
+      - name: Verify MPS resource management
+        run: |
+          bash scripts/test-mps-container-pid-namespace.sh
+          python3 tests/test-mps-device-lifetime.py
+          python3 tests/test-mps-buffer-pool-order.py
+      - name: Verify native CPU architecture
+        run: |
+          case "${{ matrix.arch }}:$(uname -m)" in
+            amd64:x86_64|arm64:aarch64)
+              echo 'PASS: native CPU architecture'
+              ;;
+            *)
+              echo 'FAIL: unexpected runner architecture' >&2
+              exit 1
+              ;;
+          esac
+      - name: Build native HailoRT MPS service
+        env:
+          MPS_BUILD_JOBS: ${{ matrix.jobs }}
+        run: bash scripts/build-mps.sh
+      - name: Verify native binary architecture
+        run: |
+          binary="build/mps-${{ matrix.arch }}/hailort/hailort_service/hailort_service"
+          test -x "$binary"
+          file "$binary"
+          case "${{ matrix.arch }}" in
+            amd64) file "$binary" | grep -E 'x86-64|x86_64' ;;
+            arm64) file "$binary" | grep -E 'aarch64|ARM aarch64' ;;
+          esac
+          ldd "$binary" | tee /dev/stderr | grep -q libhailort
+          if ldd "$binary" | grep -q 'not found'; then
+            echo 'FAIL: unresolved shared libraries' >&2
+            exit 1
+          fi

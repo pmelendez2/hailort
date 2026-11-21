@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Never bypass privacy and secret checks when making a local commit.
+set -euo pipefail
+root="$(git rev-parse --show-toplevel)"
+exec "$root/scripts/preflight-mps.sh" --staged

@@ -1,0 +1,12 @@
+title = "HailoRT public submission local secret-scanning rules"
+[extend]
+useDefault = true
+
+# Ignore generated build products, not source, scripts or documentation.
+[[allowlists]]
+description = "Generated files and repository metadata"
+paths = [
+  '''(^|/)build(/|$)''',
+  '''(^|/)\.git(/|$)''',
+  '''(^|/)hailort\.log$''',
+]

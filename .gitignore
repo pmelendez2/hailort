@@ -1,0 +1,14 @@
+/build/
+/cmake-build-*/
+/hailort.log
+*.core
+core.*
+*.orig
+*.swp
+*.swo
+__pycache__/
+.venv/
+*.whl
+*.deb
+*.zip
+/hailort-4.24.0-mps-container-pid-keepalive-corrected.patch
