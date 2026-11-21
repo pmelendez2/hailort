@@ -53,6 +53,7 @@ jobs:
           "$RUNNER_TEMP/cmake-venv/bin/python" -m pip install cmake==4.2.3
           echo "$RUNNER_TEMP/cmake-venv/bin" >> "$GITHUB_PATH"
           go install github.com/zricethezav/gitleaks/v8@v8.24.3
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
           echo "/usr/lib/ccache" >> "$GITHUB_PATH"
       - name: Verify compiler cache

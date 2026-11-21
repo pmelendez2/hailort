@@ -11,6 +11,28 @@ command -v gitleaks >/dev/null || {
     exit 1
 }
 
+# Validate GitHub Actions expressions before commit or publication.
+# Go-installed tools may not yet be on the interactive shell's PATH.
+actionlint_bin="$(command -v actionlint || true)"
+
+if [[ -z "$actionlint_bin" ]] && command -v go >/dev/null; then
+    go_bin="$(go env GOBIN)"
+    if [[ -z "$go_bin" ]]; then
+        go_bin="$(go env GOPATH)/bin"
+    fi
+    if [[ -x "$go_bin/actionlint" ]]; then
+        actionlint_bin="$go_bin/actionlint"
+    fi
+fi
+
+if [[ -z "$actionlint_bin" ]]; then
+    echo 'FAIL: actionlint v1.7.12 is required' >&2
+    exit 1
+fi
+
+"$actionlint_bin" .github/workflows/mps-isolated.yml
+echo 'PASS: GitHub Actions workflow lint'
+
 scan_feature_commits() {
     git rev-parse --verify "${base}^{commit}" >/dev/null || {
         echo "FAIL: feature base $base not found" >&2
