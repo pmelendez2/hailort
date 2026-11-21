@@ -26,6 +26,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     env:
+      MPS_TARGET_ARCH: ${{ matrix.arch }}
       CCACHE_DIR: ${{ github.workspace }}/.mps-ccache
       CCACHE_MAXSIZE: 2G
       CCACHE_COMPRESS: 'true'
@@ -84,7 +85,7 @@ jobs:
           python3 tests/test-mps-buffer-pool-order.py
       - name: Verify native CPU architecture
         run: |
-          case "${{ matrix.arch }}:$(uname -m)" in
+          case "$MPS_TARGET_ARCH:$(uname -m)" in
             amd64:x86_64|arm64:aarch64)
               echo 'PASS: native CPU architecture'
               ;;
